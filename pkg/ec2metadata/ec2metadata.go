@@ -45,6 +45,8 @@ const (
 	LocalIPPath = "/latest/meta-data/local-ipv4"
 	// AZPlacementPath path to availability zone placement
 	AZPlacementPath = "/latest/meta-data/placement/availability-zone"
+	// DocumentInstanceIdentityPath path to instance-identity document
+	DocumentInstanceIdentityPath = "/latest/dynamic/instance-identity/document"
 
 	// IMDSv2 token related constants
 	tokenRefreshPath        = "/latest/api/token"
@@ -101,6 +103,7 @@ type NodeMetadata struct {
 	LocalHostname    string
 	LocalIP          string
 	AvailabilityZone string
+	Region           string
 }
 
 // New constructs an instance of the Service client
@@ -285,6 +288,7 @@ func retry(attempts int, sleep time.Duration, httpReq func() (*http.Response, er
 // GetNodeMetadata attempts to gather additional ec2 instance information from the metadata service
 func (e *Service) GetNodeMetadata() NodeMetadata {
 	var metadata NodeMetadata
+	var m map[string]interface{}
 	metadata.InstanceID, _ = e.GetMetadataInfo(InstanceIDPath)
 	metadata.InstanceType, _ = e.GetMetadataInfo(InstanceTypePath)
 	metadata.PublicHostname, _ = e.GetMetadataInfo(PublicHostnamePath)
@@ -292,6 +296,12 @@ func (e *Service) GetNodeMetadata() NodeMetadata {
 	metadata.LocalHostname, _ = e.GetMetadataInfo(LocalHostnamePath)
 	metadata.LocalIP, _ = e.GetMetadataInfo(LocalIPPath)
 	metadata.AvailabilityZone, _ = e.GetMetadataInfo(AZPlacementPath)
+	result, _ := e.GetMetadataInfo(DocumentInstanceIdentityPath)
+	if err := json.Unmarshal([]byte(result), &m); err != nil {
+		log.Log().Err(err).Msg("Unable to parse instance-identity document")
+	} else {
+		metadata.Region = m["region"].(string)
+	}
 
 	log.Log().Interface("metadata", metadata).Msg("Startup Metadata Retrieved")
 

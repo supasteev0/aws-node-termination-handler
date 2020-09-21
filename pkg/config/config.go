@@ -44,6 +44,7 @@ const (
 	webhookHeadersConfigKey                 = "WEBHOOK_HEADERS"
 	webhookHeadersDefault                   = `{"Content-type":"application/json"}`
 	webhookTemplateConfigKey                = "WEBHOOK_TEMPLATE"
+	webhookTemplateFileConfigKey            = "WEBHOOK_TEMPLATE_FILE"
 	webhookTemplateDefault                  = `{"text":"[NTH][Instance Interruption] EventID: {{ .EventID }} - Kind: {{ .Kind }} - Description: {{ .Description }} - Start Time: {{ .StartTime }}"}`
 	enableScheduledEventDrainingConfigKey   = "ENABLE_SCHEDULED_EVENT_DRAINING"
 	enableScheduledEventDrainingDefault     = false
@@ -79,6 +80,7 @@ type Config struct {
 	WebhookURL                     string
 	WebhookHeaders                 string
 	WebhookTemplate                string
+	WebhookTemplateFile            string
 	WebhookProxy                   string
 	EnableScheduledEventDraining   bool
 	EnableSpotInterruptionDraining bool
@@ -116,6 +118,7 @@ func ParseCliArgs() (config Config, err error) {
 	flag.StringVar(&config.WebhookProxy, "webhook-proxy", getEnv(webhookProxyConfigKey, webhookProxyDefault), "If specified, uses the HTTP(S) proxy to send webhooks. Example: --webhook-url='tcp://<ip-or-dns-to-proxy>:<port>'")
 	flag.StringVar(&config.WebhookHeaders, "webhook-headers", getEnv(webhookHeadersConfigKey, webhookHeadersDefault), "If specified, replaces the default webhook headers.")
 	flag.StringVar(&config.WebhookTemplate, "webhook-template", getEnv(webhookTemplateConfigKey, webhookTemplateDefault), "If specified, replaces the default webhook message template.")
+	flag.StringVar(&config.WebhookTemplateFile, "webhook-template-file", getEnv(webhookTemplateFileConfigKey, ""), "If specified, replaces the default webhook message template with content from template file.")
 	flag.BoolVar(&config.EnableScheduledEventDraining, "enable-scheduled-event-draining", getBoolEnv(enableScheduledEventDrainingConfigKey, enableScheduledEventDrainingDefault), "[EXPERIMENTAL] If true, drain nodes before the maintenance window starts for an EC2 instance scheduled event")
 	flag.BoolVar(&config.EnableSpotInterruptionDraining, "enable-spot-interruption-draining", getBoolEnv(enableSpotInterruptionDrainingConfigKey, enableSpotInterruptionDrainingDefault), "If false, do not drain nodes when the spot interruption termination notice is received")
 	flag.IntVar(&config.MetadataTries, "metadata-tries", getIntEnv(metadataTriesConfigKey, metadataTriesDefault), "The number of times to try requesting metadata. If you would like 2 retries, set metadata-tries to 3.")
@@ -142,49 +145,6 @@ func ParseCliArgs() (config Config, err error) {
 	// client-go expects these to be set in env vars
 	os.Setenv(kubernetesServiceHostConfigKey, config.KubernetesServiceHost)
 	os.Setenv(kubernetesServicePortConfigKey, config.KubernetesServicePort)
-
-	// intentionally did not log webhook configuration as there may be secrets
-	fmt.Printf(
-		"aws-node-termination-handler arguments: \n"+
-			"\tdry-run: %t,\n"+
-			"\tnode-name: %s,\n"+
-			"\tmetadata-url: %s,\n"+
-			"\tkubernetes-service-host: %s,\n"+
-			"\tkubernetes-service-port: %s,\n"+
-			"\tdelete-local-data: %t,\n"+
-			"\tignore-daemon-sets: %t,\n"+
-			"\tpod-termination-grace-period: %d,\n"+
-			"\tnode-termination-grace-period: %d,\n"+
-			"\tenable-scheduled-event-draining: %t,\n"+
-			"\tenable-spot-interruption-draining: %t,\n"+
-			"\tmetadata-tries: %d,\n"+
-			"\tcordon-only: %t,\n"+
-			"\ttaint-node: %t,\n"+
-			"\tjson-logging: %t,\n"+
-			"\twebhook-proxy: %s,\n"+
-			"\tuptime-from-file: %s,\n"+
-			"\tenable-prometheus-server: %t,\n"+
-			"\tprometheus-server-port: %d,\n",
-		config.DryRun,
-		config.NodeName,
-		config.MetadataURL,
-		config.KubernetesServiceHost,
-		config.KubernetesServicePort,
-		config.DeleteLocalData,
-		config.IgnoreDaemonSets,
-		config.PodTerminationGracePeriod,
-		config.NodeTerminationGracePeriod,
-		config.EnableScheduledEventDraining,
-		config.EnableSpotInterruptionDraining,
-		config.MetadataTries,
-		config.CordonOnly,
-		config.TaintNode,
-		config.JsonLogging,
-		config.WebhookProxy,
-		config.UptimeFromFile,
-		config.EnablePrometheus,
-		config.PrometheusPort,
-	)
 
 	return config, err
 }
